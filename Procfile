@@ -1,0 +1,1 @@
+web: gunicorn nairobi_traffic.wsgi
