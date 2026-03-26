@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Live Traffic Map - Nairobi Traffic Information System{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <!-- Map Container -->
+    <div id="map" style="height: calc(100vh - 56px - 200px); min-height: 500px;"></div>
+    
+    <!-- Info Panel -->
+    <div class="container py-4">
+        <div class="row">
+            <div class="col-md-8">
+                <h2 class="mb-3">Live Traffic Overview</h2>
+                <p class="lead">Real-time traffic information for Nairobi roads. Verified incidents and official road status updates are displayed on the map.</p>
+                
+                <div class="row mt-4">
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body text-center">
+                                <h3 class="mb-0">{{ incident_count }}</h3>
+                                <small>Active Incidents</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-warning text-dark">
+                            <div class="card-body text-center">
+                                <h3 class="mb-0">{{ road_status_count }}</h3>
+                                <small>Road Status Updates</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h3 class="mb-0">24/7</h3>
+                                <small>Live Monitoring</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Legend</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="legend-marker bg-danger rounded-circle d-inline-block" style="width: 12px; height: 12px;"></span>
+                            <span class="ms-2">Critical Incident</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="legend-marker bg-warning rounded-circle d-inline-block" style="width: 12px; height: 12px;"></span>
+                            <span class="ms-2">High Severity</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="legend-marker bg-info rounded-circle d-inline-block" style="width: 12px; height: 12px;"></span>
+                            <span class="ms-2">Medium Severity</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="legend-marker bg-secondary rounded-circle d-inline-block" style="width: 12px; height: 12px;"></span>
+                            <span class="ms-2">Low Severity</span>
+                        </div>
+                        <hr>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="legend-line bg-danger d-inline-block" style="width: 20px; height: 4px;"></span>
+                            <span class="ms-2">Road Closed</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="legend-line bg-warning d-inline-block" style="width: 20px; height: 4px;"></span>
+                            <span class="ms-2">Diversion/Construction</span>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if not user.is_authenticated %}
+                <div class="card mt-3 border-primary">
+                    <div class="card-body text-center">
+                        <p class="mb-2">Want to report an incident?</p>
+                        <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Login to Report</a>
+                        <a href="{% url 'register' %}" class="btn btn-outline-primary btn-sm ms-2">Register</a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize map centered on Nairobi
+    const map = L.map('map').setView([-1.286389, 36.817223], 12);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+    }).addTo(map);
+    
+    // Custom icons for different incident types and severities
+    const getIcon = (type, severity) => {
+        const colors = {
+            1: '#6c757d',  // Low - gray
+            2: '#17a2b8',  // Medium - info blue
+            3: '#ffc107',  // High - warning yellow
+            4: '#dc3545'   // Critical - danger red
+        };
+        
+        const icons = {
+            'accident': '💥',
+            'hazard': '⚠️',
+            'heavy_traffic': '🚗',
+            'road_closure': '🚧',
+            'construction': '🏗️',
+            'other': '⚡'
+        };
+        
+        return L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div style="background-color: ${colors[severity]}; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 16px;">${icons[type] || '⚠️'}</div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+    };
+    
+    // Load incidents from API
+    fetch('/api/incidents/')
+        .then(response => response.json())
+        .then(data => {
+            data.features.forEach(feature => {
+                const props = feature.properties;
+                const coords = feature.geometry.coordinates;
+                
+                const marker = L.marker([coords[1], coords[0]], {
+                    icon: getIcon(props.type, props.severity)
+                }).addTo(map);
+                
+                const popupContent = `
+                    <div style="min-width: 250px;">
+                        <h5 class="mb-2">${props.title}</h5>
+                        <span class="badge bg-${props.severity === 4 ? 'danger' : props.severity === 3 ? 'warning' : 'info'} mb-2">
+                            ${props.severity_display}
+                        </span>
+                        <span class="badge bg-secondary mb-2">${props.type_display}</span>
+                        <p class="mb-1"><strong>Location:</strong> ${props.location || 'Unknown'}</p>
+                        <p class="mb-2">${props.description}</p>
+                        <small class="text-muted">Reported: ${props.reported_at}</small>
+                        ${props.image_url ? `<br><img src="${props.image_url}" style="max-width: 100%; margin-top: 10px; border-radius: 4px;">` : ''}
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+            });
+        })
+        .catch(error => console.error('Error loading incidents:', error));
+    
+    // Load road statuses from API
+    fetch('/api/road-statuses/')
+        .then(response => response.json())
+        .then(data => {
+            data.road_statuses.forEach(status => {
+                // Add road status markers or lines
+                if (status.coordinates.start && status.coordinates.end) {
+                    const latlngs = [
+                        [status.coordinates.start[1], status.coordinates.start[0]],
+                        [status.coordinates.end[1], status.coordinates.end[0]]
+                    ];
+                    
+                    const colors = {
+                        'open': '#28a745',
+                        'closed': '#dc3545',
+                        'diversion': '#ffc107',
+                        'under_construction': '#fd7e14',
+                        'partially_open': '#17a2b8'
+                    };
+                    
+                    const polyline = L.polyline(latlngs, {
+                        color: colors[status.status] || '#666',
+                        weight: 5,
+                        opacity: 0.8
+                    }).addTo(map);
+                    
+                    const popupContent = `
+                        <div style="min-width: 200px;">
+                            <h5 class="mb-2">${status.road_name}</h5>
+                            <span class="badge bg-${status.status === 'closed' ? 'danger' : status.status === 'open' ? 'success' : 'warning'} mb-2">
+                                ${status.status_display}
+                            </span>
+                            <p class="mb-1">${status.description}</p>
+                            ${status.alternative_route ? `<p class="mb-1"><strong>Alternative:</strong> ${status.alternative_route}</p>` : ''}
+                            <small class="text-muted">Effective: ${status.effective_date}</small>
+                        </div>
+                    `;
+                    
+                    polyline.bindPopup(popupContent);
+                }
+            });
+        })
+        .catch(error => console.error('Error loading road statuses:', error));
+    
+    // Refresh data every 60 seconds
+    setInterval(() => {
+        location.reload();
+    }, 60000);
+</script>
+{% endblock %}

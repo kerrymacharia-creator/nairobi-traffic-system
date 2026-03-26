@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}Authority Dashboard - Nairobi Traffic Information System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+            <div class="position-sticky pt-3">
+                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                    <span>Dashboard</span>
+                </h6>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#pending">
+                            <span data-feather="alert-circle"></span>
+                            Pending Incidents
+                            <span class="badge bg-danger ms-1">{{ pending_count }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#verified">
+                            <span data-feather="check-circle"></span>
+                            Recently Verified
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home' %}">
+                            <span data-feather="map"></span>
+                            View Public Map
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Main content -->
+        <div class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Authority Dashboard</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <span class="badge bg-primary fs-6">Role: {{ user.profile.get_role_display }}</span>
+                </div>
+            </div>
+            
+            <!-- Pending Incidents Section -->
+            <h3 id="pending" class="mb-3">Pending Incidents <span class="badge bg-danger">{{ pending_count }}</span></h3>
+            
+            {% if pending_incidents %}
+            <div class="row">
+                {% for incident in pending_incidents %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 border-warning">
+                        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                            <span class="badge bg-dark">{{ incident.get_incident_type_display }}</span>
+                            <small>{{ incident.created_at|timesince }} ago</small>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">{{ incident.title }}</h5>
+                            <p class="card-text">{{ incident.description|truncatewords:20 }}</p>
+                            <ul class="list-unstyled small text-muted mb-3">
+                                <li><strong>Severity:</strong> {{ incident.get_severity_display }}</li>
+                                <li><strong>Location:</strong> {{ incident.location_name|default:"Not specified" }}</li>
+                                <li><strong>Reported by:</strong> {{ incident.reported_by.username }}</li>
+                                <li><strong>Coords:</strong> {{ incident.latitude|floatformat:4 }}, {{ incident.longitude|floatformat:4 }}</li>
+                            </ul>
+                            {% if incident.image %}
+                            <a href="{{ incident.image.url }}" target="_blank" class="btn btn-sm btn-outline-info mb-2">View Photo</a>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <form method="post" class="d-flex gap-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="incident_id" value="{{ incident.id }}">
+                                <button type="submit" name="action" value="verify" class="btn btn-success btn-sm flex-fill">✓ Verify</button>
+                                <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm flex-fill">✗ Reject</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                No pending incidents to verify. All caught up!
+            </div>
+            {% endif %}
+            
+            <!-- Recently Verified Section -->
+            <h3 id="verified" class="mb-3 mt-5">Recently Verified Incidents</h3>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Title</th>
+                            <th>Type</th>
+                            <th>Severity</th>
+                            <th>Location</th>
+                            <th>Verified At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for incident in verified_incidents %}
+                        <tr>
+                            <td>{{ incident.title }}</td>
+                            <td><span class="badge bg-secondary">{{ incident.get_incident_type_display }}</span></td>
+                            <span class="badge  {% if incident.severity == 4 %}bg-danger{% elif incident.severity == 3 %}bg-warning{% else %}bg-info{% endif %}">{{ incident.get_severity_display }}</span>
+                            <td>{{ incident.location_name|default:"-" }}</td>
+                            <td>{{ incident.verified_at|date:"M d, Y H:i" }}</td>
+                            <td>
+                                <form method="post" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="incident_id" value="{{ incident.id }}">
+                                    <button type="submit" name="action" value="resolve" class="btn btn-sm btn-outline-success">Mark Resolved</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">No verified incidents yet</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Recent Road Statuses -->
+            <h3 class="mb-3 mt-5">Recent Road Status Updates</h3>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Road</th>
+                            <th>Status</th>
+                            <th>Updated By</th>
+                            <th>Effective Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for status in recent_road_statuses %}
+                        <tr>
+                            <td><strong>{{ status.road_name }}</strong></td>
+                            <td><span class="badge bg-{{ status.status == 'closed' ? 'danger' : status.status == 'open' ? 'success' : 'warning' }}">{{ status.get_status_display }}</span></td>
+                            <td>{{ status.updated_by.username }}</td>
+                            <td>{{ status.effective_date|date:"M d, Y" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">No road status updates</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

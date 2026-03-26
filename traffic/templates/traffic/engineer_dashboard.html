@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}Engineer Dashboard - Nairobi Traffic Information System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+            <div class="position-sticky pt-3">
+                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                    <span>Engineer Controls</span>
+                </h6>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">
+                            <span data-feather="home"></span>
+                            Overview
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'create_road_status' %}">
+                            <span data-feather="plus-circle"></span>
+                            Add Road Update
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home' %}">
+                            <span data-feather="map"></span>
+                            Public Map
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Engineer Dashboard</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{% url 'create_road_status' %}" class="btn btn-sm btn-primary">
+                        <span data-feather="plus"></span> Update Road Status
+                    </a>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-primary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Roads Managed</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ road_statuses.count }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-success shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Open Roads</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ open_count }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-danger shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Closed Roads</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ closed_count }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-warning shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Under Construction</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ construction_count }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Current Road Conditions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Road Name</th>
+                                    <th>Status</th>
+                                    <th>Description</th>
+                                    <th>Last Updated</th>
+                                    <th>Effective Until</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for status in road_statuses %}
+                                <tr>
+                                    <td><strong>{{ status.road_name }}</strong></td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if status.status == 'open' %}bg-success
+                                            {% elif status.status == 'closed' %}bg-danger
+                                            {% else %}bg-warning text-dark{% endif %}">
+                                            {{ status.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ status.description|truncatewords:10 }}</td>
+                                    <td>{{ status.updated_at|date:"M d, Y H:i" }}</td>
+                                    <td>{{ status.effective_date|date:"M d, Y"|default:"Indefinite" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No road status records found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

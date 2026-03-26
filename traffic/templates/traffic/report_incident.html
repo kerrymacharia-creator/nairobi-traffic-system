@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}Report Incident - Nairobi Traffic Information System{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <h2 class="mb-4">Report Traffic Incident</h2>
+            
+            <div class="card">
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="incidentForm" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_title" class="form-label">Incident Title *</label>
+                                {{ form.title }}
+                                {% if form.title.errors %}
+                                <div class="text-danger small">{{ form.title.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="id_incident_type" class="form-label">Incident Type *</label>
+                                {{ form.incident_type }}
+                                {% if form.incident_type.errors %}
+                                <div class="text-danger small">{{ form.incident_type.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_severity" class="form-label">Severity Level *</label>
+                                {{ form.severity }}
+                                {% if form.severity.errors %}
+                                <div class="text-danger small">{{ form.severity.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">1=Low, 2=Medium, 3=High, 4=Critical</div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="id_location_name" class="form-label">Location Name</label>
+                                {{ form.location_name }}
+                                {% if form.location_name.errors %}
+                                <div class="text-danger small">{{ form.location_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Select Location on Map *</label>
+                            <div id="map" style="height: 300px; border-radius: 8px; border: 1px solid #ddd;"></div>
+                            <div class="form-text">Click on the map to set the incident location</div>
+                            {% if form.latitude.errors or form.longitude.errors %}
+                            <div class="text-danger small">Please select a location on the map</div>
+                            {% endif %}
+                        </div>
+                        
+                        {{ form.latitude }}
+                        {{ form.longitude }}
+                        
+                        <div class="mb-3">
+                            <label for="id_description" class="form-label">Description *</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="text-danger small">{{ form.description.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="id_image" class="form-label">Photo (Optional)</label>
+                            {{ form.image }}
+                            {% if form.image.errors %}
+                            <div class="text-danger small">{{ form.image.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'home' %}" class="btn btn-outline-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Submit Report</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card bg-light">
+                <div class="card-header">
+                    <h5 class="mb-0">Reporting Guidelines</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">✅ Provide accurate location details</li>
+                        <li class="mb-2">✅ Be specific about the incident type</li>
+                        <li class="mb-2">✅ Include clear photos if possible</li>
+                        <li class="mb-2">✅ Report only current incidents</li>
+                        <li class="mb-2">⚠️ False reports may lead to account suspension</li>
+                        <li>⏱️ Reports are verified before appearing on map</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize map
+    const map = L.map('map').setView([-1.286389, 36.817223], 13);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+    
+    let marker = null;
+    
+    // Add click event to map
+    map.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        
+        // Remove existing marker
+        if (marker) {
+            map.removeLayer(marker);
+        }
+        
+        // Add new marker
+        marker = L.marker([lat, lng]).addTo(map);
+        
+        // Update form fields
+        document.getElementById('id_latitude').value = lat.toFixed(8);
+        document.getElementById('id_longitude').value = lng.toFixed(8);
+        
+        // Reverse geocode (optional - just display coordinates)
+        marker.bindPopup(`Selected Location<br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`).openPopup();
+    });
+    
+    // Form validation
+    document.getElementById('incidentForm').addEventListener('submit', function(e) {
+        const lat = document.getElementById('id_latitude').value;
+        const lng = document.getElementById('id_longitude').value;
+        
+        if (!lat || !lng) {
+            e.preventDefault();
+            alert('Please select a location on the map by clicking on it.');
+        }
+    });
+</script>
+{% endblock %}
