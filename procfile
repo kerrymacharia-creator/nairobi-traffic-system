@@ -1,1 +1,1 @@
-web: gunicorn nairobi_traffic.wsgi:application
+web: gunicorn nairobi_traffic.wsgi
